@@ -3,7 +3,8 @@ package com.example.jwtdemo.controller;
 import com.example.jwtdemo.request.JwtAuthenticationRequest;
 import com.example.jwtdemo.response.JwtAuthenticationResponse;
 import com.example.jwtdemo.service.JwtUserDetailsService;
-import com.example.jwtdemo.utils.JwtTokenUtil;
+import com.example.jwtdemo.utils.JwtUtil;
+import io.jsonwebtoken.impl.DefaultClaims;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,6 +18,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
+import java.util.Map;
+
 
 @RestController
 @CrossOrigin
@@ -26,7 +31,7 @@ public class JwtAuthenticationController {
     private AuthenticationManager authenticationManager;
 
     @Autowired
-    private JwtTokenUtil jwtTokenUtil;
+    private JwtUtil jwtUtil;
 
     @Autowired
     private JwtUserDetailsService jwtUserDetailsService;
@@ -39,10 +44,20 @@ public class JwtAuthenticationController {
         final UserDetails userDetails = jwtUserDetailsService
                 .loadUserByUsername(authenticationRequest.getUsername());
 
-        final String token = jwtTokenUtil.generateToken(userDetails);
+        final String token = jwtUtil.generateToken(userDetails);
 
         return ResponseEntity.ok(new JwtAuthenticationResponse(token));
     }
+    @RequestMapping(value = "/refreshToken", method = RequestMethod.GET)
+    public ResponseEntity<?> refreshToken(HttpServletRequest request) throws Exception {
+        // From the HttpRequest get the claims
+        DefaultClaims defaultClaims = (io.jsonwebtoken.impl.DefaultClaims) request.getAttribute("claims");
+
+        Map<String, Object> claims = new HashMap<>(defaultClaims);
+        String token = jwtUtil.generateRefreshToken(claims, claims.get(DefaultClaims.SUBJECT).toString());
+        return ResponseEntity.ok(new JwtAuthenticationResponse(token));
+    }
+
 
     private void authenticate(String username, String password) throws Exception {
         try {
